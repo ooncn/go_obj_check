@@ -22,7 +22,7 @@ type User struct {
 	ToAje    *int        `json:"to_aje" objCheck:"type:int| 整数;length:0,10| 长度;notNull:1 | 不能为空"`
 	ToCheng  *bool       `json:"to_cheng" checkType:"bool" checkLength:"msg:" checkNull:"msg:"`
 	ToPrice  *float64    `json:"to_price" objCheck:"type:float| 浮点数;length:0,10| 长度;notNull:1 | 不能为空"`
-	List     []string    `json:"list" objCheck:"type:array| 数组;length:0,10| 长度;notNull:1 | 不能为空"`
+	List     []string    `json:"list" objCheck:"type:array| 数组;length:0,10| 长度"`
 	ToObje   interface{} `json:"to_obje" checkType:"object" checkLength:"msg:" checkNull:"msg:"`
 	Regex    string      `json:"regex" objCheck:"type:regex|正则表达式;regex:^(\\d{15,15}|\\d{16,16}|\\d{17,17}|\\d{18,18}|\\d{19,19}|(\\d{17,17}[x|X]))$"`
 }
@@ -36,6 +36,9 @@ func main() {
 	fmt.Println(len("null:"))
 	var u = new(User)
 	u.Name = "杜英杰"
+	u.UserName = &u.Name
+	f := float64(0.3)
+	u.ToPrice = &f
 	aje := 10
 	u.ToAje = &aje
 	t := reflect.TypeOf(*u) // 获取对象的属性类型，获取类型定义里面的所有元素
@@ -70,7 +73,64 @@ func main() {
 		//}
 		o := ObjCheck{}
 		o.StructTag(field)
-		if o.NotNull && IsBlankValue(val) {
+		if o.Type == "regex" {
+
+			//判断类型
+			switch field.Type.Kind() {
+			case reflect.String:
+				length := len(val.String())
+				if o.Length && (o.Max < int64(length) && o.Min > int64(length)) {
+					if len(o.Msg["notNull"]) > 0 {
+						errors.New(o.Msg["notNull"])
+						panic(o.Msg["notNull"])
+					} else {
+						errors.New(fieldName + "不能为空")
+						panic(fieldName + "不能为空")
+					}
+				}
+				continue
+			case reflect.Bool:
+				continue
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				if o.Length && (o.Max < val.Int() && o.Min > val.Int()) {
+					if len(o.Msg["notNull"]) > 0 {
+						errors.New(o.Msg["notNull"])
+						panic(o.Msg["notNull"])
+					} else {
+						msg := fieldName + "范围(" + strconv.FormatInt(o.Min, 10) + "," + strconv.FormatInt(o.Max, 10) + ")"
+						errors.New(msg)
+						panic(msg)
+					}
+				}
+				continue
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+				if o.Length && (o.Max < int64(val.Uint()) && o.Min > int64(val.Uint())) {
+					if len(o.Msg["notNull"]) > 0 {
+						errors.New(o.Msg["notNull"])
+						panic(o.Msg["notNull"])
+					} else {
+						msg := fieldName + "范围(" + strconv.FormatInt(o.Min, 10) + "," + strconv.FormatInt(o.Max, 10) + ")"
+						errors.New(msg)
+						panic(msg)
+					}
+				}
+				continue
+			case reflect.Float32, reflect.Float64:
+				if o.Length && (o.Max < int64(val.Float()) && o.Min > int64(val.Uint())) {
+					if len(o.Msg["notNull"]) > 0 {
+						errors.New(o.Msg["notNull"])
+						panic(o.Msg["notNull"])
+					} else {
+						msg := fieldName + "范围(" + strconv.FormatInt(o.Min, 10) + "," + strconv.FormatInt(o.Max, 10) + ")"
+						errors.New(msg)
+						panic(msg)
+					}
+				}
+				continue
+			case reflect.Interface, reflect.Ptr:
+				continue
+			}
+		} else if o.NotNull && IsBlankValue(val) {
 			if len(o.Msg["notNull"]) > 0 {
 				errors.New(o.Msg["notNull"])
 				panic(o.Msg["notNull"])
@@ -134,7 +194,6 @@ func main() {
 			case reflect.Interface, reflect.Ptr:
 				continue
 			}
-
 		}
 		fmt.Println(util.JsonToStr(o))
 	}
@@ -161,13 +220,15 @@ func get(obj interface{}) {
 }
 
 type ObjCheck struct {
-	Type    string            // 校验类型
-	Length  bool              // 开启大小长度校验
-	Min     int64             // 最小长度
-	Max     int64             // 最大长度
-	NotNull bool              // 是否为空
-	Regex   string            // 正则表达式
-	Msg     map[string]string // 信息提示
+	Type     string            // 校验类型
+	Length   bool              // 开启大小长度校验
+	Min      int64             // 最小长度
+	Max      int64             // 最大长度
+	MinFloat float64           // 最小长度
+	MaxFloat float64           // 最大长度
+	NotNull  bool              // 是否为空
+	Regex    string            // 正则表达式
+	Msg      map[string]string // 信息提示
 }
 
 func (o *ObjCheck) StructTag(field reflect.StructField) {
@@ -193,16 +254,20 @@ func (o *ObjCheck) StructTag(field reflect.StructField) {
 				if k != nil {
 					if strings.Index(*k, ",") > 0 {
 						min, max := splitTwo(*k, ",")
-						max1, _ := strconv.ParseInt(*min, 10, 64)
+						min1, _ := strconv.ParseFloat(*min, 0)
+						max1, _ := strconv.ParseFloat(*max, 0)
+						o.MinFloat = min1
+						o.MaxFloat = max1
+						min2, _ := strconv.ParseInt(*min, 10, 64)
 						max2, _ := strconv.ParseInt(*max, 10, 64)
-						o.Min = max1
+						o.Min = min2
 						o.Max = max2
 						o.Length = true
 					} else {
-						min := int64(0)
-						o.Min = min
 						max, _ := strconv.ParseInt(*k, 10, 64)
 						o.Max = max
+						max1, _ := strconv.ParseFloat(*k, 0)
+						o.MaxFloat = max1
 						o.Length = true
 					}
 				}
@@ -212,10 +277,8 @@ func (o *ObjCheck) StructTag(field reflect.StructField) {
 				k, v := splitTwo(a[8:], "|")
 				if k != nil && *k == "1" {
 					o.NotNull = true
-				} else {
-					msg["notNull"] = *v
 				}
-
+				msg["notNull"] = *v
 			}
 		}
 	}
