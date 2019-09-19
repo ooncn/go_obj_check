@@ -19,6 +19,9 @@ type User struct {
 	Obj
 	UserName *string     `json:"user_name" objCheck:"type:string| 字符串;length:0,10| 长度;notNull:1 | 不能为空"`
 	Name     string      `json:"name" objCheck:"type:string| 字符串;length:0,10| 长度;notNull:1 | 不能为空"`
+	Email    string      `json:"name" objCheck:"type:string| 字符串;length:0,10| 长度;notNull:1 | 不能为空"`
+	Phone    string      `json:"name" objCheck:"type:string| 字符串;length:0,10| 长度;notNull:1 | 不能为空"`
+	IdCard   string      `json:"name" objCheck:"type:string| 字符串;length:0,10| 长度;notNull:1 | 不能为空"`
 	ToAje    *int        `json:"to_aje" objCheck:"type:int| 整数;length:0,10| 长度;notNull:1 | 不能为空"`
 	ToCheng  *bool       `json:"to_cheng" checkType:"bool" checkLength:"msg:" checkNull:"msg:"`
 	ToPrice  *float64    `json:"to_price" objCheck:"type:float| 浮点数;length:0,10| 长度;notNull:1 | 不能为空"`
@@ -30,10 +33,6 @@ type User struct {
 //checkType 类型：string,int,bool,float,array,object,email,phone,idCard
 //checkLength 类型长度：(int float)(0,10).最小，最大 array，string（最短，最长）
 func main() {
-
-	fmt.Println(len("type:"))
-	fmt.Println(len("length:"))
-	fmt.Println(len("null:"))
 	var u = new(User)
 	u.Name = "杜英杰"
 	u.UserName = &u.Name
@@ -180,7 +179,7 @@ func main() {
 				}
 				continue
 			case reflect.Float32, reflect.Float64:
-				if o.Length && (o.Max < int64(val.Float()) && o.Min > int64(val.Uint())) {
+				if o.Length && (o.MaxFloat < val.Float() && o.MinFloat > val.Float()) {
 					if len(o.Msg["notNull"]) > 0 {
 						errors.New(o.Msg["notNull"])
 						panic(o.Msg["notNull"])
@@ -191,7 +190,8 @@ func main() {
 					}
 				}
 				continue
-			case reflect.Interface, reflect.Ptr:
+			case reflect.Ptr:
+				fmt.Println(val.Elem())
 				continue
 			}
 		}
@@ -220,6 +220,8 @@ func get(obj interface{}) {
 }
 
 type ObjCheck struct {
+	ObjName  string            // 对象名
+	Name     string            // 属性名称
 	Type     string            // 校验类型
 	Length   bool              // 开启大小长度校验
 	Min      int64             // 最小长度
@@ -232,6 +234,8 @@ type ObjCheck struct {
 }
 
 func (o *ObjCheck) StructTag(field reflect.StructField) {
+	o.Name = field.Name
+	o.Type = field.Type.Name()
 	tag := field.Tag
 	tagStr := tag.Get("objCheck")
 	tagStr = strings.ReplaceAll(tagStr, " ", "")
