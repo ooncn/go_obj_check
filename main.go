@@ -1,10 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"github.com/kataras/iris/core/errors"
 	"github.com/weixuan75/go_model/util"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -19,9 +20,9 @@ type User struct {
 	Obj
 	UserName *string     `json:"user_name" objCheck:"type:string| 字符串;length:0,10| 长度;notNull:1 | 不能为空"`
 	Name     string      `json:"name" objCheck:"type:string| 字符串;length:0,10| 长度;notNull:1 | 不能为空"`
-	Email    string      `json:"name" objCheck:"type:string| 字符串;length:0,10| 长度;notNull:1 | 不能为空"`
-	Phone    string      `json:"name" objCheck:"type:string| 字符串;length:0,10| 长度;notNull:1 | 不能为空"`
-	IdCard   string      `json:"name" objCheck:"type:string| 字符串;length:0,10| 长度;notNull:1 | 不能为空"`
+	Email    string      `json:"email" objCheck:"type:string| 字符串;length:0,10| 长度"`
+	Phone    string      `json:"phone" objCheck:"type:string| 字符串;length:0,10| 长度"`
+	IdCard   string      `json:"id_card" objCheck:"type:string| 字符串;length:0,10| 长度"`
 	ToAje    *int        `json:"to_aje" objCheck:"type:int| 整数;length:0,10| 长度;notNull:1 | 不能为空"`
 	ToCheng  *bool       `json:"to_cheng" checkType:"bool" checkLength:"msg:" checkNull:"msg:"`
 	ToPrice  *float64    `json:"to_price" objCheck:"type:float| 浮点数;length:0,10| 长度;notNull:1 | 不能为空"`
@@ -33,6 +34,14 @@ type User struct {
 //checkType 类型：string,int,bool,float,array,object,email,phone,idCard
 //checkLength 类型长度：(int float)(0,10).最小，最大 array，string（最短，最长）
 func main() {
+	str := "杜英杰"
+	if IsIdCardNum(str) {
+		fmt.Println("是")
+	} else {
+		fmt.Println("否")
+	}
+}
+func test() {
 	var u = new(User)
 	u.Name = "杜英杰"
 	u.UserName = &u.Name
@@ -322,4 +331,43 @@ func IsBlankValue(value reflect.Value) bool {
 }
 func IsBlank(model interface{}) bool {
 	return IsBlankValue(reflect.ValueOf(model))
+}
+
+// 判断是否是手机号
+func IsPhone(str string) bool {
+	reg := regexp.MustCompile(`^1[3|4|5|6|7|8][0-9]\d{8}$`)
+	return reg.MatchString(str)
+}
+
+// 判断是否是数字（整数，正数，负数，小数）
+func IsNumber(str string) bool {
+	reg := regexp.MustCompile(`^(\-|\+)?\d+(\.\d+)?$`)
+	return reg.MatchString(str)
+}
+
+// 数字+字符大小写
+func IsNumAz(str string) bool {
+	reg := regexp.MustCompile(`^[A-Za-z0-9]+$`)
+	return reg.MatchString(str)
+}
+
+// 判断是否是中文
+func IsZh(str string) bool {
+	reg := regexp.MustCompile(`[\p{Han}]+$`)
+	return reg.MatchString(str)
+}
+
+// var reg = new RegExp("^[a-z0-9]+([._\\-]*[a-z0-9])*@([a-z0-9]+[-a-z0-9]*[a-z0-9]+.){1,63}[a-z0-9]+$"); //正则表达式
+// new RegExp(/^1[3|4|5|7|8][0-9]\d{8}$/);//是否是电话号
+// /^[0-9]*$/ 判断整数
+// "^[A-Za-z0-9_]+$" 用户名
+// // 判断是否是中文
+// /^[A-Za-z0-9-\u4e00-\u9fa5]+$/ 中文加数字
+// /(^\d{15}$)|(^\d{16}$)|(^\d{18}$)|(^\d{19}$)|(^\d{20}$)|(^\d{17}(\d|X)$)/ //身份证号
+
+func IsIdCardNum(str string) bool {
+	//reg := regexp.MustCompile(`(^\d{15}$)|(^\d{16}$)|(^\d{17}|(^\d{18}$)|(^\d{19}$)|(^\d{20}$)(\d|X)$)`)
+	//reg := regexp.MustCompile(`/^[A-Za-z0-9]+$/`)
+	reg := regexp.MustCompile(`[\p{Han}-A-Za-z0-9_]+$`)
+	return reg.MatchString(str)
 }
